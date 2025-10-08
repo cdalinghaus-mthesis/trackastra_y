@@ -202,13 +202,14 @@ class WrappedLightningModule(pl.LightningModule):
 
     def _common_step(self, batch, eps=torch.finfo(torch.float32).eps):
         feats = batch["features"]
+        maester_feats = batch["maester_features"]
         coords = batch["coords"]
         A = batch["assoc_matrix"]
         timepoints = batch["timepoints"]
         padding_mask = batch["padding_mask"]
         padding_mask = padding_mask.bool()
 
-        A_pred = self.model(coords, feats, padding_mask=padding_mask)
+        A_pred = self.model(coords, feats, maester_feats, padding_mask=padding_mask)
         # remove inf values that might happen due to float16 numerics
         A_pred.clamp_(torch.finfo(torch.float16).min, torch.finfo(torch.float16).max)
 
@@ -599,6 +600,18 @@ class ExampleImages(pl.pytorch.callbacks.Callback):
 
         print(f"Logged example images in {(default_timer() - start):.1f} s")
 
+from pathlib import Path
+
+def path_to_str(d):
+    """Recursively convert Path objects to strings in a dict."""
+    if isinstance(d, dict):
+        return {k: path_to_str(v) for k, v in d.items()}
+    elif isinstance(d, list):
+        return [path_to_str(x) for x in d]
+    elif isinstance(d, Path):
+        return str(d)
+    else:
+        return d
 
 # a modelcheckpoint that uses TrackingTransformer.save() to save the model
 class MyModelCheckpoint(pl.pytorch.callbacks.Callback):
@@ -613,7 +626,8 @@ class MyModelCheckpoint(pl.pytorch.callbacks.Callback):
             logging.info(f"using logdir {self._logdir}")
             self._logdir.mkdir(parents=True, exist_ok=True)
             with open(self._logdir / "train_config.yaml", "w") as f:
-                yaml.safe_dump(self._training_args, f)
+                yaml.safe_dump(path_to_str(self._training_args), f)
+                #yaml.safe_dump(self._training_args, f)
 
     def on_validation_end(self, trainer, pl_module):
         if trainer.is_global_zero and not trainer.sanity_checking:

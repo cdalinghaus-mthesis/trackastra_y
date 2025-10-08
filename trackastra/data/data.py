@@ -35,6 +35,8 @@ from trackastra.data.matching import matching
 
 # from ..utils import blockwise_sum, normalize
 from trackastra.utils import blockwise_sum, normalize
+from trackastra.data.wrfeat import WRFeatures
+from collections import OrderedDict
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -1111,14 +1113,15 @@ class CTCData(Dataset):
             )
 
             properties_by_time = dict()
-            for _t, _feats in enumerate(features):
+            for _t, (_feats, _feats_maester) in enumerate(features):
                 properties_by_time[_t] = dict(
                     coords=_feats.coords, labels=_feats.labels
                 )
             self.properties_by_time[_f] = properties_by_time
 
             _w = self._build_windows_wrfeat(
-                features,
+                [x[0] for x in features],
+                [x[1] for x in features],
                 det_masks,
                 det_gt_matching,
             )
@@ -1130,6 +1133,7 @@ class CTCData(Dataset):
     def _build_windows_wrfeat(
         self,
         features: Sequence[wrfeat.WRFeatures],
+        maester_features: Sequence[wrfeat.WRFeatures],
         det_masks: np.ndarray,
         matching: tuple[dict],
     ):
@@ -1148,6 +1152,7 @@ class CTCData(Dataset):
             img = self.imgs[t1:t2]
             mask = det_masks[t1:t2]
             feat = wrfeat.WRFeatures.concat(features[t1:t2])
+            maester_feat = wrfeat.WRFeatures.concat(maester_features[t1:t2])
 
             labels = feat.labels
             timepoints = feat.timepoints
@@ -1174,7 +1179,14 @@ class CTCData(Dataset):
                 labels=labels,
                 timepoints=timepoints,
                 wrfeat=feat,
+                maester_wrfeat=maester_feat
             )
+
+            #print(w['wrfeat'])
+            #print(w['maester_wrfeat'])
+            #import time
+            #time.sleep(30)
+
             windows.append(w)
 
         logger.debug(f"Built {len(windows)} track windows.\n")
@@ -1187,6 +1199,7 @@ class CTCData(Dataset):
             return_dense = self.return_dense
 
         track = self.windows[n]
+        
         # coords = track["coords"]
         assoc_matrix = track["assoc_matrix"]
         labels = track["labels"]
@@ -1195,6 +1208,7 @@ class CTCData(Dataset):
         timepoints = track["timepoints"]
         # track["t1"]
         feat = track["wrfeat"]
+        maester_feat = track["maester_wrfeat"]
 
         if return_dense and isinstance(mask, _CompressedArray):
             mask = mask.decompress()
@@ -1207,10 +1221,21 @@ class CTCData(Dataset):
         if self.cropper is not None:
             # Use only if there is at least one timepoint per detection
             cropped_feat, cropped_idx = self.cropper(feat)
+            maester_cropped_feat = WRFeatures(
+                coords=maester_feat.coords[cropped_idx],
+                labels=maester_feat.labels[cropped_idx],
+                timepoints=maester_feat.timepoints[cropped_idx],
+                features=OrderedDict(
+                    (k, v[cropped_idx]) for k, v in maester_feat.features.items()
+                ),
+            )
+
+            #maester_cropped_feat, cropped_idx = self.cropper(maester_feat)
             cropped_timepoints = timepoints[cropped_idx]
             if len(np.unique(cropped_timepoints)) == self.window_size:
                 idx = cropped_idx
                 feat = cropped_feat
+                maester_feat = maester_cropped_feat
                 labels = labels[idx]
                 timepoints = timepoints[idx]
                 assoc_matrix = assoc_matrix[idx][:, idx]
@@ -1219,11 +1244,13 @@ class CTCData(Dataset):
 
         if self.augmenter is not None:
             feat = self.augmenter(feat)
+            maester_feat = self.augmenter(maester_feat)
 
         coords0 = np.concatenate((feat.timepoints[:, None], feat.coords), axis=-1)
         coords0 = torch.from_numpy(coords0).float()
         assoc_matrix = torch.from_numpy(assoc_matrix.astype(np.float32))
         features = torch.from_numpy(feat.features_stacked).float()
+        maester_features = torch.from_numpy(maester_feat.features_stacked).float()
         labels = torch.from_numpy(feat.labels).long()
         timepoints = torch.from_numpy(feat.timepoints).long()
 
@@ -1234,6 +1261,7 @@ class CTCData(Dataset):
             labels = labels[:n_elems]
             coords0 = coords0[:n_elems]
             features = features[:n_elems]
+            maester_features = maester_features[:n_elems]
             assoc_matrix = assoc_matrix[:n_elems, :n_elems]
             logger.debug(
                 f"Clipped window of size {timepoints[n_elems - 1] - timepoints.min()}"
@@ -1246,6 +1274,7 @@ class CTCData(Dataset):
             coords = coords0.clone()
         res = dict(
             features=features,
+            maester_features=maester_features,
             coords0=coords0,
             coords=coords,
             assoc_matrix=assoc_matrix,
@@ -1447,6 +1476,14 @@ def pad_tensor(x, n_max: int, dim=0, value=0):
 
 
 def collate_sequence_padding(batch):
+
+    #print(len(batch), batch[0].keys)
+    #print(batch[0]['features'].shape)
+    #print(batch[0]['maester_features'].shape)
+    #import time
+    #time.sleep(30)
+    
+
     """Collate function that pads all sequences to the same length."""
     lens = tuple(len(x["coords"]) for x in batch)
     n_max_len = max(lens)
@@ -1457,6 +1494,7 @@ def collate_sequence_padding(batch):
     normal_keys = {
         "coords": 0,
         "features": 0,
+        "maester_features": 0,
         "labels": 0,  # Not needed, remove for speed.
         "timepoints": -1,  # There are real timepoints with t=0. -1 for distinction from that.
     }

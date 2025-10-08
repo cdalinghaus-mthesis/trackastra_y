@@ -367,9 +367,11 @@ class TrackingTransformer(torch.nn.Module):
 
         # self.pos_embed = NoPositionalEncoding(d=pos_embed_per_dim * (1 + coord_dim))
 
-    def forward(self, coords, features=None, padding_mask=None):
+    def forward(self, coords, features=None, maester_features=None, padding_mask=None):
         assert coords.ndim == 3 and coords.shape[-1] in (3, 4)
         _B, _N, _D = coords.shape
+
+        print(features.shape, maester_features.shape) # ex torch.Size([8, 63, 7]) torch.Size([8, 63, 10])
 
         # disable padded coords (such that it doesnt affect minimum)
         if padding_mask is not None:

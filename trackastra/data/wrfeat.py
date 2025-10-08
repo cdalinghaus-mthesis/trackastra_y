@@ -234,8 +234,19 @@ class WRFeatures:
             for p in properties
         )
 
+        features_maester = {'embeddings': np.zeros((len(timepoints), 10))}
+
+        #for k in features_maester.keys():
+        #    print(k, features_maester[k].shape)
+        #for k in features.keys():
+        #    print(k, features[k].shape)
+
+        #import time
+        #time.sleep(30)
         return cls(
             coords=coords, labels=labels, timepoints=timepoints, features=features
+        ), cls(
+            coords=coords, labels=labels, timepoints=timepoints, features=features_maester
         )
 
 
@@ -378,6 +389,7 @@ def _transform_affine(k: str, v: np.ndarray, M: np.ndarray):
         "intensity_max",
         "intensity_min",
         "border_dist",
+        "embeddings",
     ):
         pass
     else:
