@@ -459,7 +459,7 @@ class TrackingTransformer(torch.nn.Module):
     def save(self, folder):
         folder = Path(folder)
         folder.mkdir(parents=True, exist_ok=True)
-        yaml.safe_dump(self.config, open(folder / "config.yaml", "w"))
+        yaml.safe_dump(self.config, open(folder / "train_config.yaml", "w"))
         torch.save(self.state_dict(), folder / "model.pt")
 
     @classmethod
