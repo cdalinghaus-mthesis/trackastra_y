@@ -178,7 +178,12 @@ class WRFeatures:
         img: np.ndarray,
         properties="regionprops2",
         t_start: int = 0,
+        maester_embeddings_path=None,
     ):
+        if maester_embeddings_path is None:
+            print("Error: maester_embeddings_path None in from_mask_img")
+            assert False
+
         img = np.asarray(img)
         mask = np.asarray(mask)
 
@@ -234,7 +239,13 @@ class WRFeatures:
             for p in properties
         )
 
-        features_maester = {'embeddings': np.zeros((len(timepoints), 10))}
+        # Additionally: Load maester embeddings from maester_embeddings_path
+        maester_features = torch.load(maester_embeddings_path, map_location="cpu", mmap=True)
+        embeddings_from_maester = maester_features[timepoints, coords[:, 0], coords[:, 1]]
+        embeddings_from_maester = embeddings_from_maester.clone()
+
+        embeddings_np = embeddings_from_maester.detach().cpu().numpy()
+        features_maester = {'embeddings': embeddings_np} # Something like: (len(timepoints), 192)
 
         #for k in features_maester.keys():
         #    print(k, features_maester[k].shape)

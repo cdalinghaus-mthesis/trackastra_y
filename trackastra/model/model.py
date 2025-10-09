@@ -373,6 +373,11 @@ class TrackingTransformer(torch.nn.Module):
 
         print(features.shape, maester_features.shape) # ex torch.Size([8, 63, 7]) torch.Size([8, 63, 10])
 
+        print(features[0, 0])
+        print(maester_features[0, 0, :10])
+        print(features.min(), features.max(), features.mean(), features.median())
+        print(maester_features.min(), maester_features.max(), maester_features.mean(), maester_features.median())
+
         # disable padded coords (such that it doesnt affect minimum)
         if padding_mask is not None:
             coords = coords.clone()

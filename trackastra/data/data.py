@@ -1104,10 +1104,11 @@ class CTCData(Dataset):
             self.det_masks[_f] = det_masks
 
             # build features
+            maester_embeddings_path = str(self.img_folder) + '.pt'
 
             features = joblib.Parallel(n_jobs=8)(
                 joblib.delayed(wrfeat.WRFeatures.from_mask_img)(
-                    mask=mask[None], img=img[None], t_start=t
+                    mask=mask[None], img=img[None], t_start=t, maester_embeddings_path=maester_embeddings_path
                 )
                 for t, (mask, img) in enumerate(zip(det_masks, self.imgs))
             )
