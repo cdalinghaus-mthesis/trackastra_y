@@ -468,7 +468,7 @@ class TrackingTransformer(torch.nn.Module):
     ):
         folder = Path(folder)
 
-        config = yaml.load(open(folder / "config.yaml"), Loader=yaml.FullLoader)
+        config = yaml.load(open(folder / "train_config.yaml"), Loader=yaml.FullLoader)
         if args:
             args = vars(args)
             for k, v in config.items():
