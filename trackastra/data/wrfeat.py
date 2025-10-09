@@ -531,6 +531,7 @@ def get_features(
     ndim: int = 2,
     n_workers=0,
     progbar_class=tqdm,
+    maester_embeddings_path=None,
 ) -> list[WRFeatures]:
     detections = _check_dimensions(detections, ndim)
     imgs = _check_dimensions(imgs, ndim)
@@ -543,6 +544,7 @@ def get_features(
                 mask=mask[np.newaxis, ...].copy(),
                 img=img[np.newaxis, ...].copy(),
                 t_start=t,
+                maester_embeddings_path=maester_embeddings_path,
             )
             for t, (mask, img) in progbar_class(
                 enumerate(zip(detections, imgs)),
@@ -557,6 +559,7 @@ def get_features(
                 mask=mask[np.newaxis, ...],
                 img=img[np.newaxis, ...],
                 t_start=t,
+                maester_embeddings_path=maester_embeddings_path,
             )
             for t, (mask, img) in progbar_class(
                 enumerate(zip(detections, imgs)),
@@ -584,6 +587,7 @@ def _check_dimensions(x: np.ndarray, ndim: int):
 
 def build_windows(
     features: list[WRFeatures],
+    maester_features: list[WRFeatures],
     window_size: int,
     progbar_class=tqdm,
     as_torch: bool = False,
@@ -595,6 +599,7 @@ def build_windows(
         desc="Building windows",
     ):
         feat = WRFeatures.concat(features[t1:t2])
+        maester_feat = WRFeatures.concat(maester_features[t1:t2])
 
         labels = feat.labels
         timepoints = feat.timepoints
@@ -611,6 +616,9 @@ def build_windows(
             features=torch.from_numpy(feat.features_stacked)
             if as_torch
             else feat.features_stacked,
+            maester_features=torch.from_numpy(maester_feat.features_stacked)
+            if as_torch
+            else feat.maester_features_stacked,
         )
         windows.append(w)
 

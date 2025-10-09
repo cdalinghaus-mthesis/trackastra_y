@@ -38,6 +38,7 @@ def predict(batch: list[dict], model: TrackingTransformer) -> np.ndarray:
 
     padded_batch = collate_sequence_padding(batch)
     feats = padded_batch["features"]
+    maester_feats = padded_batch["maester_features"]
     coords = padded_batch["coords"]
     timepoints = padded_batch["timepoints"].long()
     padding_mask = padded_batch["padding_mask"]
@@ -52,7 +53,7 @@ def predict(batch: list[dict], model: TrackingTransformer) -> np.ndarray:
     # Concat timepoints to coordinates
     coords = torch.cat((timepoints.unsqueeze(2).float(), coords), dim=2)
     with torch.no_grad():
-        A = model(coords, features=feats, padding_mask=padding_mask)
+        A = model(coords, features=feats, maester_features=maester_feats, padding_mask=padding_mask)
 
         A = model.normalize_output(A, timepoints, coords)
 

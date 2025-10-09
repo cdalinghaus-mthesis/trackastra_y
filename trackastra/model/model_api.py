@@ -162,6 +162,7 @@ class Trackastra:
         normalize_imgs: bool = True,
         progbar_class=tqdm,
         batch_size: int | None = None,
+        maester_embeddings_path=None,
     ):
         batch_size = self.batch_size if batch_size is None else batch_size
 
@@ -180,10 +181,12 @@ class Trackastra:
             ndim=self.transformer.config["coord_dim"],
             n_workers=n_workers,
             progbar_class=progbar_class,
+            maester_embeddings_path=maester_embeddings_path,
         )
         logger.info("Building windows")
         windows = build_windows(
-            features,
+            [x[0] for x in features],
+            [x[1] for x in features],
             window_size=self.transformer.config["window"],
             progbar_class=progbar_class,
             as_torch=True,
@@ -192,7 +195,7 @@ class Trackastra:
         logger.info("Predicting windows")
         predictions = predict_windows(
             windows=windows,
-            features=features,
+            features=[x[0] for x in features],
             model=self.transformer,
             edge_threshold=edge_threshold,
             spatial_dim=masks.ndim - 1,
@@ -244,6 +247,7 @@ class Trackastra:
         progbar_class=tqdm,
         n_workers: int = 0,
         batch_size: int | None = None,
+        maester_embeddings_path=None,
         **kwargs,
     ) -> tuple[nx.DiGraph, np.ndarray]:
         """Track objects across time frames.
@@ -273,6 +277,7 @@ class Trackastra:
             progbar_class=progbar_class,
             n_workers=n_workers,
             batch_size=batch_size,
+            maester_embeddings_path=maester_embeddings_path,
         )
 
         track_graph = self._track_from_predictions(predictions, mode=mode, **kwargs)
@@ -286,6 +291,7 @@ class Trackastra:
         masks_path: Path,
         mode: Literal["greedy_nodiv", "greedy", "ilp"] = "greedy",
         normalize_imgs: bool = True,
+        maester_embeddings_path=None,
         **kwargs,
     ) -> tuple[nx.DiGraph, np.ndarray]:
         """Track objects directly from image and mask files on disk.
@@ -346,4 +352,4 @@ class Trackastra:
                 f"Img shape {imgs.shape} and mask shape {masks.shape} do not match."
             )
 
-        return self.track(imgs, masks, mode, normalize_imgs=normalize_imgs, **kwargs)
+        return self.track(imgs, masks, mode, normalize_imgs=normalize_imgs, maester_embeddings_path=maester_embeddings_path, **kwargs)
