@@ -371,7 +371,7 @@ class TrackingTransformer(torch.nn.Module):
         assert coords.ndim == 3 and coords.shape[-1] in (3, 4)
         _B, _N, _D = coords.shape
 
-        print(features.shape, maester_features.shape) # ex torch.Size([8, 63, 7]) torch.Size([8, 63, 10])
+        #print(features.shape, maester_features.shape) # ex torch.Size([8, 63, 7]) torch.Size([8, 63, 10])
 
         #print(features[0, 0]) # tensor([ 33.0957,   0.9291,  78.7983, -29.9657, -29.9657,  72.2507,   0.0000], device='cuda:0')
         #print(maester_features[0, 0, :10]) # tensor([-0.1293, -0.1464,  0.1904, -0.1174, -0.3551,  0.1601, -0.0204,  0.2013, 0.1176,  0.0688], device='cuda:0')
