@@ -373,10 +373,10 @@ class TrackingTransformer(torch.nn.Module):
 
         print(features.shape, maester_features.shape) # ex torch.Size([8, 63, 7]) torch.Size([8, 63, 10])
 
-        print(features[0, 0])
-        print(maester_features[0, 0, :10])
-        print(features.min(), features.max(), features.mean(), features.median())
-        print(maester_features.min(), maester_features.max(), maester_features.mean(), maester_features.median())
+        #print(features[0, 0]) # tensor([ 33.0957,   0.9291,  78.7983, -29.9657, -29.9657,  72.2507,   0.0000], device='cuda:0')
+        #print(maester_features[0, 0, :10]) # tensor([-0.1293, -0.1464,  0.1904, -0.1174, -0.3551,  0.1601, -0.0204,  0.2013, 0.1176,  0.0688], device='cuda:0')
+        #print(features.min(), features.max(), features.mean(), features.median()) # tensor(-66.2409, device='cuda:0') tensor(374.1650, device='cuda:0') tensor(17.1950, device='cuda:0') tensor(0., device='cuda:0')    
+        #print(maester_features.min(), maester_features.max(), maester_features.mean(), maester_features.median()) # tensor(-3.8439, device='cuda:0') tensor(4.5828, device='cuda:0') tensor(0.0015, device='cuda:0') tensor(0., device='cuda:0')
 
         # disable padded coords (such that it doesnt affect minimum)
         if padding_mask is not None:
