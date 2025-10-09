@@ -632,6 +632,9 @@ class MyModelCheckpoint(pl.pytorch.callbacks.Callback):
     def on_validation_end(self, trainer, pl_module):
         if trainer.is_global_zero and not trainer.sanity_checking:
             value = trainer.logged_metrics[self._monitor]
+            
+            # Save anyway after every epoch
+            pl_module.model.save(str(self._logdir) + f"_{trainer.current_epoch}")
             if value < self._best:
                 self._best = value
                 logging.info(f"Saved best model with {self._monitor}={value:.5f}")
