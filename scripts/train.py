@@ -876,14 +876,14 @@ def train(args):
 
     callbacks.append(pl.pytorch.callbacks.Timer(interval="epoch"))
     # Mostly for stopping broken runs
-    callbacks.append(
-        pl.pytorch.callbacks.EarlyStopping(
-            monitor="val_loss",
-            patience=args.epochs // 6,
-            mode="min",
-            verbose=True,
-        )
-    )
+    #callbacks.append(
+    #    pl.pytorch.callbacks.EarlyStopping(
+    #        monitor="val_loss",
+    #        patience=args.epochs // 6,
+    #        mode="min",
+    #        verbose=True,
+    #    )
+    #)
 
     if args.example_images:
         callbacks.append(ExampleImages())

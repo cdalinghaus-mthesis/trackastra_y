@@ -288,6 +288,7 @@ class TrackingTransformer(torch.nn.Module):
             "none", "linear", "softmax", "quiet_softmax"
         ] = "quiet_softmax",
         attn_dist_mode: str = "v0",
+        maester_feat_dim: int = 192,  # NEW: dimension of maester features
     ):
         super().__init__()
 
@@ -307,6 +308,7 @@ class TrackingTransformer(torch.nn.Module):
             feat_embed_per_dim=feat_embed_per_dim,
             causal_norm=causal_norm,
             attn_dist_mode=attn_dist_mode,
+            maester_feat_dim=maester_feat_dim,  # NEW: save in config
         )
 
         # TODO remove, alredy present in self.config
@@ -318,6 +320,9 @@ class TrackingTransformer(torch.nn.Module):
             (1 + coord_dim) * pos_embed_per_dim + feat_dim * feat_embed_per_dim, d_model
         )
         self.norm = nn.LayerNorm(d_model)
+        
+        # NEW: Add projection layer for maester features
+        self.maester_proj = nn.Linear(maester_feat_dim, d_model) if maester_feat_dim > 0 else None
 
         self.encoder = nn.ModuleList([
             EncoderLayer(
@@ -368,6 +373,56 @@ class TrackingTransformer(torch.nn.Module):
         # self.pos_embed = NoPositionalEncoding(d=pos_embed_per_dim * (1 + coord_dim))
 
     def forward(self, coords, features=None, maester_features=None, padding_mask=None):
+        assert coords.ndim == 3 and coords.shape[-1] in (3, 4)
+        maester_features = maester_features.to(coords.device)
+        _B, _N, _D = coords.shape
+
+        # disable padded coords (such that it doesnt affect minimum)
+        if padding_mask is not None:
+            coords = coords.clone()
+            coords[padding_mask] = coords.max()
+
+        # remove temporal offset
+        min_time = coords[:, :, :1].min(dim=1, keepdims=True).values
+        coords = coords - min_time
+
+        pos = self.pos_embed(coords)
+
+        if features is None or features.numel() == 0:
+            features = pos
+        else:
+            features = self.feat_embed(features)
+            features = torch.cat((pos, features), axis=-1)
+
+        # Project base features
+        features = self.proj(features)
+        features = self.norm(features)
+
+        # NEW: Add maester features after projection
+        if maester_features is not None and self.maester_proj is not None:
+            maester_features_proj = self.maester_proj(maester_features)
+            features = features + maester_features_proj
+
+        x = features
+
+        # encoder
+        for enc in self.encoder:
+            x = enc(x, coords=coords, padding_mask=padding_mask)
+
+        y = features
+        # decoder w cross attention
+        for dec in self.decoder:
+            y = dec(y, x, coords=coords, padding_mask=padding_mask)
+
+        x = self.head_x(x)
+        y = self.head_y(y)
+
+        # outer product is the association matrix (logits)
+        A = torch.einsum("bnd,bmd->bnm", x, y)
+
+        return A
+
+    def _forward(self, coords, features=None, maester_features=None, padding_mask=None):
         assert coords.ndim == 3 and coords.shape[-1] in (3, 4)
         _B, _N, _D = coords.shape
 
