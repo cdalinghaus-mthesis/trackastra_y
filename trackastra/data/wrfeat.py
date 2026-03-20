@@ -186,6 +186,19 @@ class WRFeatures:
 
         img = np.asarray(img)
         mask = np.asarray(mask)
+        """
+        print(img.shape, mask.shape)
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots(2,1)
+        im1 = ax.flat[0].imshow(img[0])
+        im2 = ax.flat[1].imshow(mask[0])
+        fig.colorbar(im1, ax=ax[0])
+        fig.colorbar(im2, ax=ax[1])
+
+        plt.savefig('test.png')
+        import sys
+        sys.exit()
+        """
 
         _ntime, ndim = mask.shape[0], mask.ndim - 1
         if ndim not in (2, 3):
@@ -241,12 +254,30 @@ class WRFeatures:
 
         # Additionally: Load maester embeddings from maester_embeddings_path
         maester_features = torch.load(maester_embeddings_path, map_location="cpu", mmap=True)
+        
+        """ OLD: Embedding from just the centroid!
         embeddings_from_maester = maester_features[timepoints, coords[:, 0], coords[:, 1]]
         embeddings_from_maester = embeddings_from_maester.clone()
 
         embeddings_np = embeddings_from_maester.detach().cpu().numpy()
         features_maester = {'embeddings': embeddings_np} # Something like: (len(timepoints), 192)
+        """
 
+        ## New: Mean Aggregated Masks
+        _list = []
+        for idx in range(coords.shape[0]):
+            t_local = timepoints[idx] - t_start
+            lab = labels[idx]
+
+            cell_mask = (mask[t_local] == lab)
+            #print("to be meaned:, ", maester_features[timepoints[idx]][cell_mask].shape)
+            emb_for_this_cell = maester_features[timepoints[idx]][cell_mask].mean(axis=0)
+            #print("meaned:", emb_for_this_cell.shape)
+            _list.append(emb_for_this_cell.detach().cpu().numpy())
+
+        cell_emb_np_embeddings = np.stack(_list)
+        #print("stacked.shape", cell_emb_np_embeddings)
+        features_maester = {'embeddings': cell_emb_np_embeddings}
         #for k in features_maester.keys():
         #    print(k, features_maester[k].shape)
         #for k in features.keys():
@@ -254,6 +285,14 @@ class WRFeatures:
 
         #import time
         #time.sleep(30)
+        print(coords.shape) # (10, 2)
+        print(labels.shape) # (10,)
+        print(labels, timepoints) # [ 1  5  9 13 18 22 23 26 28 32] [12 12 12 12 12 12 12 12 12 12]
+        print(timepoints.shape) # (10,)
+        #print(embeddings_np.shape) # (10, 256)
+        #print(coords.shape, labels.shape, timepoints.shape, features.shape, features_maester.shape)
+        #import sys
+        #sys.exit()
         return cls(
             coords=coords, labels=labels, timepoints=timepoints, features=features
         ), cls(
